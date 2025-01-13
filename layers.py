@@ -8,6 +8,8 @@ import cupy as cp
 from itertools import filterfalse
 import torch.nn.functional as F
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class SwitchNorm2d(nn.Module):
     def __init__(self, num_features, eps=1e-5, momentum=0.9, using_moving_average=True, using_bn=True,
                  last_gamma=False):
@@ -160,10 +162,11 @@ class SpectralPoolNd(nn.Module):
 class ConvBlock(nn.Module):
   def __init__(self, input, output, kernel_size, padding):
     super(ConvBlock, self).__init__()
-    self.conv = nn.Conv2d(input, output, kernel_size, stride=1, padding=padding)
-    self.Relu = nn.ReLU()
+    self.conv = nn.Conv2d(input, output, kernel_size, stride=1, padding=padding).to(device)
+    self.Relu = nn.ReLU().to(device)
 
   def forward(self, x):
+    x = x.to(device)
     return self.Relu(self.conv(x))
 
 class ConvBlockIso(nn.Module):
@@ -176,8 +179,8 @@ class ConvBlockIso(nn.Module):
       self.padding = 0
     else:
       pass
-    self.conv = nn.Conv2d(input, output, kernel_size, stride=1, padding=padding)
-    self.Relu = nn.ReLU()
+    self.conv = nn.Conv2d(input, output, kernel_size, stride=1, padding=padding).to(device)
+    self.Relu = nn.ReLU().to(device)
 
   def forward(self, x):
     return self.Relu(self.conv(x))
@@ -199,6 +202,7 @@ class HybridPool2D(nn.Module):
     max_pooled = self.maxpool(x)
     spectral_pooled = self.spectral_pool(x)
     spectral_pooled = torch.nn.functional.interpolate(spectral_pooled, size=max_pooled.shape[-2:], mode='bilinear', align_corners=False)
+    spectral_pooled = spectral_pooled.to(device)
     output = torch.concat([max_pooled, spectral_pooled], dim=1)
     output = ConvBlock(output.shape[1], max_pooled.shape[1], kernel_size=1, padding=0)(output)
     return output
@@ -215,12 +219,13 @@ class HybridPool2DInception(nn.Module):
     else:
       pass
     self.spectral_pool = SpectralPoolNd(return_shape)
-    self.maxpool = nn.MaxPool2d(kernel_size, stride, self.padding)
+    self.maxpool = nn.MaxPool2d(kernel_size, stride, self.padding).to(device)
 
   def forward(self, x):
     max_pooled = self.maxpool(x)
     spectral_pooled = self.spectral_pool(x)
     spectral_pooled = torch.nn.functional.interpolate(spectral_pooled, size=max_pooled.shape[-2:], mode='bilinear', align_corners=False)
+    spectral_pooled = spectral_pooled.to(device)
     output = torch.concat([max_pooled, spectral_pooled], dim=1)
     output = ConvBlock(output.shape[1], max_pooled.shape[1], kernel_size=1, padding=0)(output)
     output = torch.nn.functional.interpolate(output, size=self.output_shape[1:], mode='bilinear', align_corners=False)
@@ -237,6 +242,7 @@ class InceptionBlock_Real(nn.Module):
     self.HybridPool = HybridPool2DInception(return_shape=(hybpl, hybpl), padding="valid", output_shape=(output, hybpl, hybpl))
 
   def forward(self, x):
+    x = x.to(device)
     x = torch.cat([self.Conv1(x), self.Conv2(x), self.Conv3(x),
                    self.HybridPool(x)], dim=1)
     return x

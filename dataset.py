@@ -1,7 +1,6 @@
 from pathlib import Path
 from torchvision import transforms
 import numpy as np
-import cv2
 from PIL import Image
 from skimage import io
 
@@ -83,7 +82,7 @@ class Dataset_Train():
     section = find_section(image_path)
     patient = find_patient(image_path)
     scan = find_slice_train(image_path)
-    mask_path = "data/ISBI_2015/Train/Y/"+section+"/"+patient+"/training"+patient_to_path(patient)+"_mask1"+scan+".png"
+    mask_path = "data/ISBI_2015_Small/Train/Y/"+section+"/"+patient+"/training"+patient_to_path(patient)+"_mask1"+scan+".png"
     mask = io.imread(mask_path)
     image = Image.fromarray(image)
     mask = Image.fromarray(mask)
@@ -105,19 +104,19 @@ class Dataset_Test():
   def __getitem__(self, i):
     image_path = self.image_paths[i]
 
-    image = cv2.imread(str(self.image_paths[i]))
-
+    image = io.imread(image_path)
     section = find_section(image_path)
     scan = find_slice_train(image_path)
     patient = patient_to_path_test(image_path)
-    mask_path = "data/ISBI_2015/Test/Y/"+section+"/Patient-1/training"+patient+"_mask1"+scan+".png"
-    mask = cv2.imread(mask_path)
+    mask_path = "data/ISBI_2015_Small/Test/Y/"+section+"/Patient-1/training"+patient+"_mask1"+scan+".png"
+    mask = io.imread(mask_path)
+    image = Image.fromarray(image)
+    mask = Image.fromarray(mask)
 
-    if self.augmentation:
-      image = self.augmentation(image)
-      mask = self.augmentation(mask)
+    t_image = data_transform(image)
+    t_imagemask = data_transform(mask)
 
-    return image, mask
+    return t_image, t_imagemask
 
   def __len__(self):
     return len(self.image_paths)
