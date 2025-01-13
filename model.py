@@ -120,6 +120,5 @@ class UNet_Real(nn.Module):
     final_out = self.Dropout(op_9)
     final_out = self.Conv2d(final_out)
     final_out = self.sigmoid(final_out)
-    print(final_out.shape)
 
     return final_out
